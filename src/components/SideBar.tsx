@@ -158,21 +158,21 @@ export function Sidebar({ open, setOpen, onLogout }: any) {
     </>
   );
 }
-const MenuItem = ({ to, icon, label }: any) => {
-  const location = useLocation();
-  const active = location.pathname.startsWith(to);
+// const MenuItem = ({ to, icon, label }: any) => {
+//   const location = useLocation();
+//   const active = location.pathname.startsWith(to);
 
-  return (
-    <Link
-      to={to}
-      className={`flex items-center gap-3 p-3 rounded-lg transition text-sm ${
-        active
-          ? "bg-white text-primary font-semibold shadow"
-          : "hover:bg-white/10"
-      }`}
-    >
-      {icon}
-      <span>{label}</span>
-    </Link>
-  );
-};
+//   return (
+//     <Link
+//       to={to}
+//       className={`flex items-center gap-3 p-3 rounded-lg transition text-sm ${
+//         active
+//           ? "bg-white text-primary font-semibold shadow"
+//           : "hover:bg-white/10"
+//       }`}
+//     >
+//       {icon}
+//       <span>{label}</span>
+//     </Link>
+//   );
+// };
