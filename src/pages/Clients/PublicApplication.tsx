@@ -551,8 +551,9 @@ export default function LoanApplicationModern() {
               <Input
                 label="Signature"
                 name="signature"
-                value={form.signature}
-                onChange={handleChange}
+                disabled={true}
+                value={form.full_name}
+                // onChange={handleChange}
                 error={errors.signature}
               />
             </div>
