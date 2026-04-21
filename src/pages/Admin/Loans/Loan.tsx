@@ -5,14 +5,47 @@ import LoanTable from "./LoanTable";
 import LoanDrawer from "./LoanDrawer";
 import CardSkeleton from "../../../components/Loaders/CardSkeleton";
 import TableSkeleton from "../../../components/Loaders/TableSkeleton";
-
+import CreateLoanDrawer from "./CreateLoanDrawer";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../../app/store";
+// import PaymentDrawer from "./PaymentDrawer";
+import { useCreatePaymentMutation } from "../../../api/paymentApi";
+import { toast } from "react-toastify";
 export default function Loans() {
   const { data: loans = [], isLoading, refetch } = useGetLoansQuery();
-  console.log(loans);
+
   useEffect(() => {
     refetch();
   }, []);
+  const { role } = useSelector((state: RootState) => state.auth);
   const [selectedLoan, setSelectedLoan] = useState<any | null>(null);
+  const [openCreate, setOpenCreate] = useState(false);
+  // const [openDrawer, setOpenDrawer] = useState(false);
+  const [createPayment,{isLoading: isCreatingPayment}] = useCreatePaymentMutation();
+  const handlePay = (loan: any) => {
+    setSelectedLoan(loan);
+    // setOpenDrawer(true);
+  };
+
+  // 👉 close drawer
+  const handleClose = () => {
+    // setOpenDrawer(false);
+    setSelectedLoan(null);
+  };
+
+  // 👉 submit payment
+  const handleSubmitPayment = async (data: any) => {
+   try {
+     await createPayment(data).unwrap();
+    handleClose();
+    toast.success("Payment recorded");
+     refetch();
+   } catch (error) {
+    console.log(error)
+    toast.error("Failed to record payment");
+   }
+  };
+
   const stats = loans.reduce(
     (acc: any, loan: any) => {
       acc.totalLoans += 1;
@@ -37,9 +70,20 @@ export default function Loans() {
   return (
     <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* TITLE */}
-      <div>
-        <h1 className="text-xl font-semibold">Loans</h1>
-        <p className="text-sm text-gray-500">Manage all issued loans</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-semibold">Loans</h1>
+          <p className="text-sm text-gray-500">Manage all issued loans</p>
+        </div>
+
+        {(role !== "client") && (
+          <button
+            onClick={() => setOpenCreate(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-xl"
+          >
+            + Create Loan Application
+          </button>
+        )}
       </div>
       {/* 🔥 STATS */}
       {isLoading ? <CardSkeleton /> : <StatsCards stats={stats} />}
@@ -57,12 +101,33 @@ export default function Loans() {
         <TableSkeleton />
       ) : (
         <div className="hidden md:block">
-          <LoanTable loans={loans} onSelect={setSelectedLoan} />
+          <LoanTable
+            loans={loans}
+            onPay={handlePay}
+            onSelect={setSelectedLoan}
+          />
         </div>
       )}
 
       {/* DRAWER */}
-      <LoanDrawer loan={selectedLoan} onClose={() => setSelectedLoan(null)} />
+      {/* <LoanDrawer loan={selectedLoan} onClose={() => setSelectedLoan(null)} onPay={handlePay} /> */}
+      <LoanDrawer
+        open={!!selectedLoan}
+        loan={selectedLoan}
+        onClose={() => setSelectedLoan(null)}
+        onPay={handleSubmitPayment}
+        isLoadingPayment={isCreatingPayment}
+      />
+      <CreateLoanDrawer
+        open={openCreate}
+        onClose={() => setOpenCreate(false)}
+      />
+      {/* <PaymentDrawer
+        loan={selectedLoan}
+        open={openDrawer}
+        onClose={handleClose}
+        onSubmit={handleSubmitPayment}
+      /> */}
     </div>
   );
 }

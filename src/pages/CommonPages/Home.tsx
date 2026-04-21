@@ -43,12 +43,20 @@ export default function HomePage() {
           <span className="font-semibold text-lg">Kigali Microloans</span>
         </div>
 
-        <button
+        <div className="flex items-center gap-x-2">
+          <button
           onClick={() => navigate("/login")}
           className="bg-white text-primary px-4 md:px-6 py-2 rounded-lg text-sm md:text-base font-medium hover:scale-105 transition"
         >
           Login
         </button>
+        <button
+          onClick={() => navigate("/application")}
+          className="bg-white text-primary px-4 md:px-6 py-2 rounded-lg text-sm md:text-base font-medium hover:scale-105 transition"
+        >
+          Apply for Loan
+        </button>
+        </div>
       </header>
 
       {/* HERO */}

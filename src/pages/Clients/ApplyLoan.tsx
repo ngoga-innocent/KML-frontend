@@ -22,7 +22,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 export default function ApplyLoan() {
   const { data: loanTypes = [] } = useGetLoanTypesQuery();
   const { data: applications = [] } = useGetApplicationsQuery();
-
+  console.log(applications);
   const [applyLoan, { isLoading }] = useApplyLoanMutation();
   const [signContract, { isLoading: signContractLoading }] =
     useSignContractMutation();
@@ -32,7 +32,7 @@ export default function ApplyLoan() {
   const [selectedLoanType, setSelectedLoanType] = useState<any>();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedApp, setSelectedApp] = useState<any>(null);
-
+  const [manualFile, setManualFile] = useState<File | null>(null);
   const [elements, setElements] = useState<any[]>([]);
   const [clientName, setClientName] = useState("");
 
@@ -48,8 +48,9 @@ export default function ApplyLoan() {
   const BASE_URL = url;
   const getFileUrl = (path: string) =>
     path?.startsWith("http") ? path : `${BASE_URL}${path}`;
-
+  console.log(getFileUrl(selectedApp?.contract));
   /* ================= APPLY ================= */
+
   const handleApply = async () => {
     if (!loanType || !amount) return toast.error("Fill all fields");
 
@@ -65,10 +66,9 @@ export default function ApplyLoan() {
         toast.error(
           err?.data?.non_field_errors[0] || err?.data[0] || err?.data,
         );
-      } else if(err?.data) {
+      } else if (err?.data) {
         toast.error(err?.data[0]);
-        
-      }else{
+      } else {
         toast.error("Failed to apply for Loan");
       }
     }
@@ -214,8 +214,8 @@ export default function ApplyLoan() {
   //     toast.error("Failed to sign contract");
   //   }
   // };
-  if(signContractLoading){
-    toast.info('Signing Contract')
+  if (signContractLoading) {
+    toast.info("Signing Contract");
   }
   const handleSign = async () => {
     if (!elements.length) return toast.error("Add signature or name");
@@ -263,6 +263,27 @@ export default function ApplyLoan() {
     };
 
     reader.readAsDataURL(file);
+  };
+  // Handle Manual Upload
+  const handleManualUpload = async () => {
+    if (!manualFile) return toast.error("Please select a file");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", manualFile);
+
+      await signContract({
+        id: selectedApp.id,
+        data: formData,
+      }).unwrap();
+
+      toast.success("Signed contract uploaded successfully");
+      setManualDrawer(false);
+      setManualFile(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload signed contract");
+    }
   };
   return (
     <div className="p-4 md:p-6 bg-slate-50 min-h-screen space-y-6">
@@ -423,98 +444,234 @@ export default function ApplyLoan() {
       {/* DESKTOP TABLE */}
       <div className="hidden md:block bg-white rounded shadow overflow-auto">
         <table className="w-full text-sm">
-          <thead className="text-start bg-gray-100">
-            <tr className="text-left">
-              <th className="p-3 text-left">Loan</th>
+          <thead className="bg-gray-100 text-left">
+            <tr>
+              <th className="p-3">Loan</th>
               <th>Amount</th>
+              <th>Interest</th>
+              <th>Total Repayment</th>
+              <th>Duration</th>
+              <th>Due Date</th>
               <th>Status</th>
               <th>Action</th>
             </tr>
           </thead>
 
           <tbody>
-            {applications.map((app) => (
-              <tr key={app.id} className="border-t">
-                <td className="p-3">{app.loan_type_details?.name}</td>
+            {applications.map((app) => {
+              const amount = Number(app.requested_amount);
+              const rate = Number(app.loan_type_details?.interest_rate || 0);
 
-                <td>RWF {app.requested_amount}</td>
-                <td>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusStyle(
-                      app.status,
-                    )}`}
-                  >
-                    {app.status}
-                  </span>
-                </td>
+              // 💰 interest calculation (flat for now)
+              const interestAmount = amount * (rate / 100);
 
-                {(app.contract) ? <td className="space-x-2">
-                  {!app.is_signed && app.status === "reviewed" && (
-                    <>
-                      <button
-                        onClick={() => openModal(app)}
-                        className="bg-green-600 text-white px-2 py-1 rounded text-xs"
-                      >
-                        E-Sign
-                      </button>
+              // 💳 total repayment
+              const totalRepayment = amount + interestAmount;
 
-                      <button
-                        onClick={() => {
-                          setManualDrawer(true);
-                          setSelectedApp(app);
-                        }}
-                        className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
-                      >
-                        Manual
-                      </button>
-                    </>
-                  )}
-                </td>:((app.status==='reviewed')? <td className="text-xs text-gray-500 font-bold"> Wait for Your contract</td> :( app.status !=='rejected' && <td className="text-xs font-bold text-gray-500"> Apllication in Review</td>))}
-              </tr>
-            ))}
+              // 📅 due date calculation
+              const durationMonths =
+                app.loan_type_details?.repayment_period_value || 1;
+
+              const createdDate = new Date(app.created_at);
+              const dueDate = new Date(createdDate);
+              dueDate.setMonth(dueDate.getMonth() + durationMonths);
+
+              return (
+                <tr key={app.id} className="border-t">
+                  {/* LOAN NAME */}
+                  <td className="p-3 font-medium">
+                    {app.loan_type_details?.name}
+                  </td>
+
+                  {/* AMOUNT */}
+                  <td>RWF {amount.toLocaleString()}</td>
+
+                  {/* INTEREST */}
+                  <td className="text-yellow-600 font-medium">
+                    RWF{" "}
+                    {interestAmount.toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })}
+                  </td>
+
+                  {/* TOTAL REPAYMENT */}
+                  <td className="text-green-700 font-semibold">
+                    RWF{" "}
+                    {totalRepayment.toLocaleString(undefined, {
+                      maximumFractionDigits: 0,
+                    })}
+                  </td>
+
+                  {/* DURATION */}
+                  <td>
+                    {durationMonths} month{durationMonths > 1 ? "s" : ""}
+                  </td>
+
+                  {/* DUE DATE */}
+                  <td className="text-blue-600">
+                    {dueDate.toLocaleDateString()}
+                  </td>
+
+                  {/* STATUS */}
+                  <td>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${getStatusStyle(
+                        app.status,
+                      )}`}
+                    >
+                      {app.status}
+                    </span>
+                  </td>
+
+                  {/* ACTION */}
+                  <td>
+                    {app.status === "approved" ? (
+                      <a className="text-blue-500" href="/dashboard/loans">
+                        View Loan
+                      </a>
+                    ) : app.contract ? (
+                      <div className="space-x-2">
+                        {!app.is_signed && app.status === "reviewed" && (
+                          <>
+                            <button className="bg-green-600 text-white px-2 py-1 rounded text-xs">
+                              E-Sign
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                setManualDrawer(true);
+                                setSelectedApp(app);
+                              }}
+                              className="bg-yellow-500 text-white px-2 py-1 rounded text-xs"
+                            >
+                              Manual Sign
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ) : app.status === "reviewed" ? (
+                      <span className="text-xs text-gray-500 font-bold">
+                        Waiting for contract
+                      </span>
+                    ) : (
+                      app.status !== "rejected" && (
+                        <span className="text-xs font-bold text-gray-500">
+                          Application in Review
+                        </span>
+                      )
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* MOBILE CARDS */}
       <div className="md:hidden space-y-3">
-        {applications.map((app) => (
-          <div key={app.id} className="bg-white p-4 rounded shadow space-y-2">
-            <div className="flex justify-between">
-              <p className="font-semibold">{app.loan_type_details?.name}</p>
-              <span
-                className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${getStatusStyle(
-                  app.status,
-                )}`}
-              ></span>
-            </div>
+        {applications.map((app) => {
+          const amount = Number(app.requested_amount);
+          const rate = Number(app.loan_type_details?.interest_rate || 0);
 
-            <p className="text-sm">
-              Amount: <b> RF {app.requested_amount}</b>
-            </p>
+          const interest = amount * (rate / 100);
+          const total = amount + interest;
 
-            {!app.is_signed && app.status === "reviewed" && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => openModal(app)}
-                  className="flex-1 bg-green-600 text-white py-1 rounded text-xs"
+          const duration = app.loan_type_details?.repayment_period_value || 1;
+
+          const created = new Date(app.created_at);
+          const due = new Date(created);
+          due.setMonth(due.getMonth() + duration);
+
+          return (
+            <div
+              key={app.id}
+              className="bg-white p-4 rounded-xl shadow-sm border space-y-3"
+            >
+              {/* HEADER */}
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="font-semibold text-slate-800">
+                    {app.loan_type_details?.name}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    #{app.id} • {app.client_data?.names}
+                  </p>
+                </div>
+
+                {/* STATUS */}
+                <span
+                  className={`text-xs px-2 py-1 rounded-full font-medium capitalize ${getStatusStyle(
+                    app.status,
+                  )}`}
                 >
-                  E-Sign
-                </button>
-
-                <button
-                  onClick={() => {
-                    setManualDrawer(true);
-                    setSelectedApp(app);
-                  }}
-                  className="flex-1 bg-yellow-500 text-white py-1 rounded text-xs"
-                >
-                  Manual
-                </button>
+                  {app.status}
+                </span>
               </div>
-            )}
-          </div>
-        ))}
+
+              {/* FINANCIAL GRID */}
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-gray-500 text-xs">Amount</p>
+                  <p className="font-medium">RWF {amount.toLocaleString()}</p>
+                </div>
+
+                <div>
+                  <p className="text-gray-500 text-xs">Interest</p>
+                  <p className="text-yellow-600 font-medium">
+                    RWF {interest.toLocaleString()}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-500 text-xs">Total Repayment</p>
+                  <p className="text-green-700 font-semibold">
+                    RWF {total.toLocaleString()}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-gray-500 text-xs">Due Date</p>
+                  <p className="text-blue-600 font-medium">
+                    {due.toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              {/* ACTIONS */}
+              {!app.is_signed && app.status === "reviewed" && (
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => openModal(app)}
+                    className="flex-1 bg-green-600 text-white py-2 rounded-lg text-xs font-medium"
+                  >
+                    E-Sign
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setManualDrawer(true);
+                      setSelectedApp(app);
+                    }}
+                    className="flex-1 bg-yellow-500 text-white py-2 rounded-lg text-xs font-medium"
+                  >
+                    Manual
+                  </button>
+                </div>
+              )}
+
+              {/* SECONDARY INFO */}
+              <div className="text-xs text-gray-500 flex justify-between pt-1 border-t">
+                <span>
+                  Duration: {duration} month{duration > 1 ? "s" : ""}
+                </span>
+                <span>
+                  Created: {new Date(app.created_at).toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* MODAL */}
@@ -686,11 +843,35 @@ export default function ApplyLoan() {
           >
             Download Contract
           </a>
-
-          <input type="file" className="mt-3" />
-
-          <button className="bg-green-600 text-white w-full py-2 mt-3 rounded">
+          <label
+            htmlFor="signed_contract"
+            className="block mt-3 text-sm font-medium text-gray-700"
+          >
             Upload Signed Contract
+          </label>
+          <input
+            type="file"
+            id="signed_contract"
+            placeholder="upload your Signed contract"
+            className="mt-1 border border-gray-300 bg-gray-100 rounded w-full p-2"
+            accept="application/pdf"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+
+              if (file.type !== "application/pdf") {
+                return toast.error("Only PDF files are allowed");
+              }
+
+              setManualFile(file);
+            }}
+          />
+
+          <button
+            onClick={handleManualUpload}
+            className="bg-green-600 text-white w-full py-2 mt-3 rounded"
+          >
+            {signContractLoading ? "Uploading..." : "Upload Signed Contract"}
           </button>
         </div>
       )}

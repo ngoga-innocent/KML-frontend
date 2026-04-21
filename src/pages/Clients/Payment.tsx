@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { FiCheck, FiX } from "react-icons/fi";
+import { useState } from "react";
+// import { FiCheck, FiX } from "react-icons/fi";
 import { toast } from "react-toastify";
 import {
   useCreatePaymentMutation,
@@ -11,13 +11,12 @@ import { useSelector } from "react-redux";
 import type { RootState } from "../../app/store";
 
 const PaymentPage = () => {
-  const { data, isLoading, isError } = useGetPaymentsQuery<any>(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data, isLoading, isError } = useGetPaymentsQuery<any>(undefined);
   const { data: loansData } = useGetLoansQuery();
   const { role } = useSelector((state: RootState) => state.auth);
 
-  const [createPayment] = useCreatePaymentMutation();
+  const [createPayment, { isLoading: isCreatingPayment }] =
+    useCreatePaymentMutation();
   const [reviewPayment] = useReviewPaymentMutation();
 
   const [filter, setFilter] = useState("all");
@@ -28,89 +27,50 @@ const PaymentPage = () => {
     payment_proof: null as File | null,
   });
 
-  /* ================= SAFE DATA ================= */
-
   const payments = Array.isArray(data) ? data : data?.results || [];
   const loans = Array.isArray(loansData) ? loansData : loansData?.results || [];
 
-  /* ================= FIXED LOAN FILTER ================= */
+  const activeLoans = loans.filter(
+    (l: any) =>
+      Number(l.remaining_balance) > 0 &&
+      l.status !== "paid" &&
+      l.status !== "reloaned",
+  );
 
-  const activeLoans = loans.filter((l: any) => {
-    const remaining = Number(l.remaining_balance || 0);
-    const isNotPaid = l.status !== "paid"; // Adjust 'paid' to match your exact string
-    return remaining > 0 && isNotPaid;
-  });
-
-  const selectedLoan = activeLoans.find((l: any) => String(l.id) === form.loan);
-
-  /* ================= SUMMARY ================= */
-
-  const summary = useMemo(() => {
-    let total = 0;
-    let pending = 0;
-    let approved = 0;
-
-    payments.forEach((p: any) => {
-      if (p.status === "approved") {
-        total += Number(p.amount_paid || 0);
-        approved++;
-      }
-      if (p.status === "pending") pending++;
-    });
-
-    return { total, pending, approved };
-  }, [payments]);
-
-  /* ================= FILTER ================= */
+  // const selectedLoan = activeLoans.find(
+  //   (l: any) => String(l.id) === form.loan,
+  // );
 
   const filteredPayments =
     filter === "all"
       ? payments
       : payments.filter((p: any) => p.status === filter);
 
-  /* ================= HELPERS ================= */
-
   const formatAmount = (v: number) => `${Number(v || 0).toLocaleString()} RWF`;
 
   const formatDate = (d: string) =>
     d ? new Date(d).toLocaleDateString() : "-";
 
-  /* ================= ACTIONS ================= */
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!form.loan || !form.amount_paid || !form.payment_proof) {
-      toast.error("All fields including proof are required");
-      return;
-    }
-
-    if (
-      selectedLoan &&
-      Number(form.amount_paid) > Number(selectedLoan.remaining_balance)
-    ) {
-      toast.error("Amount exceeds remaining balance");
-      return;
-    }
 
     const formData = new FormData();
     formData.append("loan_id", form.loan);
     formData.append("amount_paid", form.amount_paid);
-    formData.append("payment_proof", form.payment_proof);
+    if (form.payment_proof)
+      formData.append("payment_proof", form.payment_proof);
 
     try {
       await createPayment(formData).unwrap();
-      toast.success("Payment submitted successfully");
+      toast.success("Payment submitted");
 
       setForm({
         loan: "",
         amount_paid: "",
         payment_proof: null,
       });
-    } catch (err: any) {
-      console.log(err);
-
-      toast.error(err?.data?.error || err?.data[0] || "Payment failed");
+    } catch {
+      toast.error("Payment failed");
     }
   };
 
@@ -118,24 +78,18 @@ const PaymentPage = () => {
     try {
       await reviewPayment({ id, action }).unwrap();
       toast.success(`Payment ${action}d`);
-    } catch (err: any) {
-      console.log(err);
-
-      toast.error(err?.data?.error || "Action failed");
+    } catch {
+      toast.error("Action failed");
     }
   };
-
-  /* ================= STATES ================= */
 
   if (isLoading) return <p className="p-6">Loading...</p>;
   if (isError) return <p className="p-6 text-red-500">Error loading data</p>;
 
-  /* ================= UI ================= */
-
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* HEADER */}
-      <div className="flex justify-between">
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Payments</h1>
 
         <select
@@ -149,221 +103,201 @@ const PaymentPage = () => {
         </select>
       </div>
 
+      {/* ===================== */}
       {/* SUMMARY */}
+      {/* ===================== */}
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-xl shadow">
           <p>Total Paid</p>
-          <h2 className="text-xl font-bold">{formatAmount(summary.total)}</h2>
+          <h2 className="text-xl font-bold">
+            {formatAmount(
+              payments
+                .filter((p: any) => p.status === "approved")
+                .reduce((a: number, b: any) => a + Number(b.amount_paid), 0),
+            )}
+          </h2>
         </div>
 
         <div className="bg-yellow-50 p-4 rounded-xl">
-          Pending: {summary.pending}
+          Pending: {payments.filter((p: any) => p.status === "pending").length}
         </div>
 
         <div className="bg-green-50 p-4 rounded-xl">
-          Approved: {summary.approved}
+          Approved:{" "}
+          {payments.filter((p: any) => p.status === "approved").length}
         </div>
       </div>
 
-      {/* PAYMENT FORM */}
+      {/* ===================== */}
+      {/* CLIENT FORM */}
+      {/* ===================== */}
       {role === "client" && (
-        <div className="bg-white p-6 rounded-xl shadow space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white p-6 rounded-xl md:w-[60%] shadow space-y-4"
+        >
           <h2 className="font-semibold">Make Payment</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* LOAN SELECT */}
-            <select
-              value={form.loan}
-              onChange={(e) => setForm({ ...form, loan: e.target.value })}
-              className="w-full p-3 border rounded-lg"
-              required
-            >
-              <option value="">Select Loan</option>
+          <select
+            value={form.loan}
+            onChange={(e) => setForm({ ...form, loan: e.target.value })}
+            className="w-full p-3 border rounded-lg"
+            required
+          >
+            <option value="">Select Loan</option>
+            {activeLoans.map((l: any) => (
+              <option key={l.id} value={l.id}>
+                #{l.id} - {Number(l.remaining_balance).toLocaleString()} RWF
+              </option>
+            ))}
+          </select>
 
-              {activeLoans.map((l: any) => (
-                <option key={l.id} value={l.id}>
-                  #{l.id} - Balance:{" "}
-                  {Number(l.remaining_balance).toLocaleString()} RWF
-                </option>
-              ))}
-            </select>
+          <input
+            type="number"
+            placeholder="Amount"
+            value={form.amount_paid}
+            onChange={(e) => setForm({ ...form, amount_paid: e.target.value })}
+            className="w-full p-3 border rounded-lg"
+            required
+          />
 
-            {/* EMPTY STATE */}
-            {activeLoans.length === 0 && (
-              <p className="text-sm text-gray-500">
-                No active loans available for payment
-              </p>
-            )}
+          <input
+            type="file"
+            required
+            className="border border-gray-400  w-full p-3 rounded-xl bg-gray-200"
+            onChange={(e) =>
+              setForm({
+                ...form,
+                payment_proof: e.target.files?.[0] || null,
+              })
+            }
+          />
 
-            {/* LOAN DETAILS */}
-            {selectedLoan && (
-              <div className="bg-gray-50 p-3 rounded-lg">
-                Remaining:{" "}
-                <strong>
-                  {formatAmount(Number(selectedLoan.remaining_balance))}
-                </strong>
-              </div>
-            )}
-
-            {/* AMOUNT */}
-            <input
-              type="number"
-              placeholder="Amount"
-              value={form.amount_paid}
-              onChange={(e) =>
-                setForm({ ...form, amount_paid: e.target.value })
-              }
-              className="w-full p-3 border rounded-lg"
-              required
-            />
-
-            {/* FILE */}
-            <input
-              type="file"
-              required
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  payment_proof: e.target.files?.[0] || null,
-                })
-              }
-            />
-
-            <button className="w-full bg-primary text-white py-3 rounded-lg">
-              Submit Payment
-            </button>
-          </form>
-        </div>
+          <button
+            disabled={isCreatingPayment}
+            className="w-full bg-primary text-white py-3 rounded-lg"
+          >
+            {isCreatingPayment ? "Submitting..." : "Submit Payment"}
+          </button>
+        </form>
       )}
 
-      {/* TABLE */}
-      <div className="bg-white rounded-2xl shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            {/* HEADER */}
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="p-3">Loan</th>
-                <th className="p-3">Amount</th>
-                <th className="p-3">Reference</th>
-                <th className="p-3">Proof</th>
-                <th className="p-3">Date</th>
-                <th className="p-3">Schedule</th>
-                <th className="p-3">Reviewed By</th>
-                <th className="p-3">Status</th>
-                {role !== "client" && <th className="p-3">Actions</th>}
-              </tr>
-            </thead>
+      {filteredPayments.length === 0 && (
+        <p className="text-center text-gray-500">No payments found</p>
+      )}
+      {/* ===================== */}
+      {/* 📱 MOBILE CARDS */}
+      {/* ===================== */}
+      <div className="md:hidden space-y-3">
+        {filteredPayments.map((p: any) => (
+          <div key={p.id} className="bg-white p-4 rounded-xl shadow space-y-2">
+            <div className="flex justify-between">
+              <p className="font-semibold">Loan #{p.loan?.id || p.loan}</p>
 
-            {/* BODY */}
-            <tbody>
-              {filteredPayments.map((p: any) => (
-                <tr key={p.id} className="border-t hover:bg-gray-50 transition">
-                  {/* LOAN */}
-                  <td className="p-3">
-                    <div className="font-medium">#{p.loan?.id || p.loan}</div>
-                    {p.loan?.client_names && (
-                      <p className="text-xs text-gray-500">
-                        {p.loan.client_names}
-                      </p>
-                    )}
-                  </td>
+              <span
+                className={`text-xs px-2 py-1 h-6 rounded-md ${
+                  p.status === "approved"
+                    ? "bg-green-100 text-green-600"
+                    : p.status === "rejected"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-yellow-100 text-yellow-600"
+                }`}
+              >
+                {p.status}
+              </span>
+            </div>
 
-                  {/* AMOUNT */}
-                  <td className="p-3 font-semibold text-gray-800">
-                    {formatAmount(p.amount_paid)}
-                  </td>
+            <p className="text-sm font-medium">{formatAmount(p.amount_paid)}</p>
 
-                  {/* REFERENCE */}
-                  <td className="p-3 text-gray-600">{p.reference || "-"}</td>
+            <p className="text-xs text-gray-500">
+              {formatDate(p.payment_date)}
+            </p>
 
-                  {/* PROOF */}
-                  <td className="p-3">
-                    {p.payment_proof ? (
-                      <a
-                        href={p.payment_proof}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        View
-                      </a>
-                    ) : (
-                      <span className="text-gray-400">No file</span>
-                    )}
-                  </td>
+            {/* ACTIONS */}
+            {role !== "client" && p.status === "pending" && (
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => handleReview(p.id, "approve")}
+                  className="flex-1 bg-green-500 text-white py-2 rounded"
+                >
+                  Approve
+                </button>
 
-                  {/* DATE */}
-                  <td className="p-3 text-gray-600">
-                    {formatDate(p.payment_date)}
-                  </td>
+                <button
+                  onClick={() => handleReview(p.id, "reject")}
+                  className="flex-1 bg-red-500 text-white py-2 rounded"
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
-                  {/* SCHEDULE */}
-                  <td className="p-3 text-gray-600">
-                    {p.schedule?.installment_number
-                      ? `#${p.schedule.installment_number}`
-                      : "-"}
-                  </td>
+      {/* ===================== */}
+      {/* 🖥️ DESKTOP TABLE */}
+      {/* ===================== */}
+      <div className="hidden md:block bg-white rounded-2xl shadow overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-100 text-left">
+            <tr>
+              <th className="p-3">Loan</th>
+              <th className="p-3">Amount</th>
+              <th className="p-3">Proof</th>
+              <th className="p-3">Date</th>
+              <th className="p-3">Status</th>
+              {role !== "client" && <th className="p-3">Actions</th>}
+            </tr>
+          </thead>
 
-                  {/* REVIEWED BY */}
-                  <td className="p-3 text-gray-600">
-                    {p.reviewed_by?.username || "-"}
-                  </td>
-
-                  {/* STATUS */}
-                  <td className="p-3">
-                    <span
-                      className={`px-2 py-1 text-xs rounded-full font-medium ${
-                        p.status === "approved"
-                          ? "bg-green-100 text-green-600"
-                          : p.status === "rejected"
-                            ? "bg-red-100 text-red-600"
-                            : "bg-yellow-100 text-yellow-600"
-                      }`}
+          <tbody>
+            {filteredPayments.map((p: any) => (
+              <tr key={p.id} className="border-t">
+                <td className="p-3">#{p.loan?.id || p.loan}</td>
+                <td className="p-3 font-semibold">
+                  {formatAmount(p.amount_paid)}
+                </td>
+                <td className="p-3">
+                  {p.payment_proof ? (
+                    <a
+                      href={p.payment_proof}
+                      className="text-blue-500"
+                      target="_blank"
                     >
-                      {p.status}
-                    </span>
-                  </td>
-
-                  {/* ACTIONS */}
-                  {role !== "client" && (
-                    <td className="p-3">
-                      {p.status === "pending" && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleReview(p.id, "approve")}
-                            className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg transition"
-                          >
-                            <FiCheck size={16} />
-                          </button>
-
-                          <button
-                            onClick={() => handleReview(p.id, "reject")}
-                            className="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg transition"
-                          >
-                            <FiX size={16} />
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                      View
+                    </a>
+                  ) : (
+                    "-"
                   )}
-                </tr>
-              ))}
+                </td>
+                <td className="p-3">{formatDate(p.payment_date)}</td>
+                <td className="p-3">{p.status}</td>
 
-              {/* EMPTY STATE */}
-              {filteredPayments.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={role !== "client" ? 9 : 8}
-                    className="text-center p-6 text-gray-500"
-                  >
-                    No payments found
+                {role !== "client" && (
+                  <td className="p-3 space-x-2">
+                    {p.status === "pending" && (
+                      <>
+                        <button
+                          onClick={() => handleReview(p.id, "approve")}
+                          className="text-green-600"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleReview(p.id, "reject")}
+                          className="text-red-600"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
                   </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

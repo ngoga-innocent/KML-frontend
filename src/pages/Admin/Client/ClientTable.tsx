@@ -102,6 +102,7 @@ export default function ClientTable({ clients, isLoading, onEdit }: any) {
                 <th className="p-4 text-left">Phone</th>
                 <th className="p-4 text-left">Location</th>
                 <th className="p-4 text-left">Loans</th>
+                {/* <th className="p-4 text-left">Role</th> */}
                 <th className="p-4 text-left">Total Borrowed</th>
                 <th className="p-4 text-left">Status</th>
                 <th className="p-4 text-left">Joined</th>
@@ -138,7 +139,9 @@ export default function ClientTable({ clients, isLoading, onEdit }: any) {
                   <td className="p-4 text-gray-600">
                     {c.district}
                   </td>
-
+                  {/* <td className="p-4 text-gray-700 font-medium">
+                    {c.role}
+                  </td> */}
                   <td className="p-4 font-medium">
                     {c.total_loans || 0}
                   </td>

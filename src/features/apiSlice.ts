@@ -21,6 +21,6 @@ export const api = createApi({
     //     }
     // }),
     baseQuery: baseQueryWithAuth, 
-    tagTypes: ["User", "Client", "Loan", "Payment", "Application"],
+    tagTypes: ["User", "Client", "Loan", "Payment", "Application","Users"],
     endpoints: () => ({}),
 });

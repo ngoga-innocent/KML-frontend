@@ -6,16 +6,18 @@ import { loanTypeApi } from "../api/loanApi";
 import { loanApplicationApi } from "../api/loanapplication";
 import { paymentsApi } from "../api/paymentApi";
 import { dashboardApi } from "../api/dashboardApi";
-
-
+// import { userApi } from "../api/usersApi";
+import uiReducer from "../features/uiSlice";
 export const store = configureStore({
     reducer: {
         auth: authReducer,
+        ui: uiReducer,
         [api.reducerPath]: api.reducer,
         [loanTypeApi.reducerPath]: loanTypeApi.reducer,
-        [loanApplicationApi.reducerPath]:loanApplicationApi.reducer,
-        [paymentsApi.reducerPath]:paymentsApi.reducer,
-        [dashboardApi.reducerPath]:dashboardApi.reducer
+        [loanApplicationApi.reducerPath]: loanApplicationApi.reducer,
+        [paymentsApi.reducerPath]: paymentsApi.reducer,
+        [dashboardApi.reducerPath]: dashboardApi.reducer,
+        // [userApi.reducerPath]:userApi.reducer,
 
     },
     middleware: (getDefaultMiddleware) =>

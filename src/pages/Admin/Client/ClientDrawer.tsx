@@ -140,6 +140,17 @@ export default function ClientDrawer({ open, onClose, client }: any) {
                 <option>Single</option>
                 <option>Married</option>
               </Select>
+              {/* <Select
+                label="Role"
+                value={form.role}
+                onChange={(v: any) => handleChange("role", v)}
+              >
+                <option value="">Select</option>
+                <option>client</option>
+                <option>reviewer</option>
+                <option>manager</option>
+                <option>admin</option>
+              </Select> */}
             </Grid>
           </Section>
 

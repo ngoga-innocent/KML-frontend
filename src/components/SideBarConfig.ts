@@ -7,6 +7,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+
 export const SIDEBAR_CONFIG: any = {
   admin: [
     {
@@ -19,13 +20,22 @@ export const SIDEBAR_CONFIG: any = {
       label: "Loans",
       icon: CreditCard,
       children: [
-        { to: "/dashboard/loans", label: "Loans" },
-        { to: "/dashboard/loan-applications", label: "Applications" },
-        { to: "/dashboard/loan-types", label: "Loan Types" },
+        { to: "/dashboard/loans", label: "Loans",key:"loans" },
+        { to: "/dashboard/loan-applications", label: "Applications",key:"loan-applications" },
+        { to: "/dashboard/public-applications", label: "Public Applications",key:"public-applications" },
+        { to: "/dashboard/loan-types", label: "Loan Types",key:"loan-types" },
+        
         
       ],
-    },
 
+    },
+     
+
+    {
+      label: "Users",
+      icon: Users,
+      to: "/dashboard/users",
+    },
     {
       label: "Clients",
       icon: Users,
@@ -33,6 +43,7 @@ export const SIDEBAR_CONFIG: any = {
         { to: "/dashboard/clients", label: "All Clients" },
       ],
     },
+   
 
     {
       label: "Payments",
@@ -53,6 +64,7 @@ export const SIDEBAR_CONFIG: any = {
       children: [
         { to: "/dashboard/loans", label: "Loans" },
         { to: "/dashboard/loan-applications", label: "Applications" },
+        { to: "/dashboard/public-applications", label: "Public Applications" },
       ],
     },
     {
@@ -71,8 +83,17 @@ export const SIDEBAR_CONFIG: any = {
 
   reviewer: [
     {
+      label: "Dashboard",
+      to: "/dashboard",
+      icon: LayoutDashboard,
+    },
+    {
       label: "Applications",
-      to: "/dashboard/loan-applications",
+      
+      Children:[
+        { to: "/dashboard/loan-applications", label: "Applications" },
+        { to: "/dashboard/public-applications", label: "Public Applications" },
+      ],
       icon: FileText,
     },
   ],
@@ -93,4 +114,19 @@ export const SIDEBAR_CONFIG: any = {
       ],
     },
   ],
+};
+export const enrichSidebarWithCounts = (items: any[], counts: any) => {
+  return items.map((item) => {
+    if (item.children) {
+      return {
+        ...item,
+        children: item.children.map((child: any) => ({
+          ...child,
+          count: counts[child.key] || 0,
+        })),
+      };
+    }
+
+    return item;
+  });
 };

@@ -6,12 +6,11 @@ import { baseQueryWithAuth } from "../features/baseQueryApi";
 export interface LoanApplication {
   id: number;
   loan_type: number;
-  loan_type_details: {
-    name: string;
-  };
+  loan_type_details:any;
   requested_amount: string;
   status: string;
   contract?: string;
+  signed_contract?: string;
   is_signed: boolean;
   created_at: string;
   comment?:string
@@ -21,7 +20,7 @@ export interface LoanApplication {
 export const loanApplicationApi = createApi({
   reducerPath: "loanApplicationApi",
   baseQuery: baseQueryWithAuth,
-  tagTypes: ["LoanApplication"],
+  tagTypes: ["LoanApplication","PublicApplications"],
 
   endpoints: (builder) => ({
     // GET
@@ -91,7 +90,87 @@ export const loanApplicationApi = createApi({
       }),
       invalidatesTags: ["LoanApplication"],
     }),
-  }),
+    createPublicApplication: builder.mutation({
+      query: (data) => ({
+        url: "/loans/public-applications/",
+        method: "POST",
+        body: data,
+      }),
+    }),
+
+    // =========================
+    // 🔐 GET ALL APPLICATIONS (Admin/Manager/Reviewer)
+    // =========================
+    getPublicApplications: builder.query<any,void>({
+      query: () => "/loans/admin/public-applications/",
+      providesTags: ["PublicApplications"],
+    }),
+
+    // =========================
+    // 🔐 GET SINGLE APPLICATION
+    // =========================
+    getPublicApplication: builder.query({
+      query: (id) => `/loans/admin/public-applications/${id}/`,
+    }),
+
+    // =========================
+    // 🔐 UPDATE APPLICATION
+    // =========================
+    updatePublicApplication: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/loans/admin/public-applications/${id}/`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["PublicApplications"],
+    }),
+
+    // =========================
+    // 🔐 REVIEW
+    // =========================
+    reviewPublicApplication: builder.mutation({
+      query: (id) => ({
+        url: `/loans/admin/public-applications/${id}/review/`,
+        method: "POST",
+      }),
+      invalidatesTags: ["PublicApplications"],
+    }),
+
+    // =========================
+    // 🔐 CONVERT
+    // =========================
+    convertPublicApplication: builder.mutation({
+      query: ({id,body}) => ({
+        url: `/loans/admin/public-applications/${id}/convert/`,
+        method: "POST",
+        body
+      }),
+      invalidatesTags: ["PublicApplications"],
+    }),
+
+    // =========================
+    // 🔐 REJECT
+    // =========================
+    rejectPublicApplication: builder.mutation({
+      query: ({ id, comment }) => ({
+        url: `/loans/admin/public-applications/${id}/reject/`,
+        method: "POST",
+        body: { comment },
+      }),
+      invalidatesTags: ["PublicApplications"],
+    }),
+    // =========================
+    //ADMIM CREATE LOAN APPLICATION
+    //===========================
+    createAdminApplication: builder.mutation({
+      query: (data) => ({
+        url: "/loans/admin-loan-applications/",
+        method: "POST",
+        body: data,
+      }),
+      invalidatesTags: ["LoanApplication"],
+    }),
+  })
 });
 
 export const {
@@ -102,4 +181,12 @@ export const {
   useSignContractMutation,
   useUploadSignedContractMutation,
   useFinalizeLoanMutation,
+  useCreatePublicApplicationMutation,
+  useGetPublicApplicationsQuery,
+  useGetPublicApplicationQuery,
+  useUpdatePublicApplicationMutation,
+  useReviewPublicApplicationMutation,
+  useConvertPublicApplicationMutation,
+  useRejectPublicApplicationMutation,
+  useCreateAdminApplicationMutation
 } = loanApplicationApi;

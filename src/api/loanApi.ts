@@ -24,7 +24,7 @@ export interface LoanType {
 export const loanTypeApi = createApi({
   reducerPath: "loanTypeApi",
   baseQuery: baseQueryWithAuth,
-  tagTypes: ["LoanType","Loans"],
+  tagTypes: ["LoanType", "Loans"],
 
   endpoints: (builder) => ({
     // GET ALL
@@ -66,7 +66,18 @@ export const loanTypeApi = createApi({
       query: () => "/loans/list",
       providesTags: ["Loans"],
     }),
+    //Create Loan Admin
+    createLoan: builder.mutation({
+    query: (data) => ({
+      url: "/loans/loans/create-manual/",
+      method: "POST",
+      body: data,
+    }),
   }),
+
+  }),
+  
+  
 });
 
 export const {
@@ -75,4 +86,5 @@ export const {
   useUpdateLoanTypeMutation,
   useDeleteLoanTypeMutation,
   useGetLoansQuery,
+  useCreateLoanMutation,
 } = loanTypeApi;

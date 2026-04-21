@@ -54,7 +54,7 @@ export const paymentsApi = createApi({
     /* ================= LIST ================= */
 
     getPayments: builder.query<
-      any[],
+      LoanPayment[],
       { status?: string } | void
     >({
       query: (params) => {

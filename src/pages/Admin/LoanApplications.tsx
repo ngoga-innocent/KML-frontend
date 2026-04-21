@@ -9,16 +9,17 @@ import { toast } from "react-toastify";
 import { FiUpload, FiCheck, FiX } from "react-icons/fi";
 import TableSkeleton from "../../components/Loaders/TableSkeleton";
 import CardSkeleton from "../../components/Loaders/CardSkeleton";
-
+import { loaderService } from "../../components/Loaders/loaderService";
 export default function LoanApplications() {
   const { data: applications = [], isLoading } = useGetApplicationsQuery(
     undefined,
     { refetchOnMountOrArgChange: true },
   );
-  console.log(applications);
-  const [review] = useReviewApplicationMutation();
-  const [uploadContract] = useUploadContractMutation();
-  const [finalize] = useFinalizeLoanMutation();
+  // console.log(applications);
+  const [review, { isLoading: reviewLoading }] = useReviewApplicationMutation();
+  const [uploadContract] =
+    useUploadContractMutation();
+  const [finalize, { isLoading: finalizeLoading }] = useFinalizeLoanMutation();
 
   const [modal, setModal] = useState<any>(null);
   const [comment, setComment] = useState("");
@@ -26,34 +27,50 @@ export default function LoanApplications() {
 
   const handleReview = async () => {
     try {
+      loaderService.show();
       await review({
         id: modal.id,
         decision: modal.decision,
         comment,
       }).unwrap();
-
+      loaderService.hide();
       toast.success("Application updated");
       setModal(null);
+      setDetailModal(null);
       setComment("");
     } catch {
+      setModal(null);
+      setComment("");
+      setDetailModal(null);
+      loaderService.hide();
       toast.error("Failed");
     }
   };
 
   const handleUpload = async (id: number, file: File) => {
     try {
+      loaderService.show();
       await uploadContract({ id, file }).unwrap();
+      loaderService.hide();
       toast.success("Contract uploaded");
+      setDetailModal(null);
     } catch {
+      loaderService.hide();
       toast.error("Upload failed");
+
     }
   };
 
   const handleFinalize = async (id: number) => {
     try {
+      loaderService.show();
       await finalize(id).unwrap();
+      loaderService.hide();
+      setDetailModal(null);
       toast.success("Loan created");
     } catch (err: any) {
+      loaderService.hide();
+      setDetailModal(null);
       console.log(err);
 
       toast.error("Finalize failed");
@@ -80,7 +97,7 @@ export default function LoanApplications() {
         <TableSkeleton />
       ) : (
         <div className="hidden md:block bg-white shadow rounded-2xl overflow-x-auto">
-          <table className="min-w-250 divide-y divide-gray-200 text-sm">
+          <table className="min-w-250 divide-y w-full divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
@@ -98,6 +115,10 @@ export default function LoanApplications() {
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                   Contract
                 </th>
+                <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
+                  Signed Contract
+                </th>
+
                 <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">
                   Signed
                 </th>
@@ -158,6 +179,22 @@ export default function LoanApplications() {
                     )}
                   </td>
                   <td className="px-3 py-2 text-center">
+                    {app.signed_contract ? (
+                      <a
+                        href={app.signed_contract}
+                        target="_blank"
+                        className="text-blue-600 text-xs underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 text-xs">
+                        No signed contract
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-center">
                     {app.is_signed ? (
                       <span className="text-green-600 text-xs font-medium">
                         Yes
@@ -201,7 +238,8 @@ export default function LoanApplications() {
                             : "bg-black hover:bg-gray-800"
                         }`}
                       >
-                        <FiUpload /> {app.contract ? "Replace" : "Upload Contract"}
+                        <FiUpload />{" "}
+                        {app.contract ? "Replace" : "Upload Contract"}
                         <input
                           hidden
                           type="file"
@@ -218,9 +256,10 @@ export default function LoanApplications() {
                           e.stopPropagation();
                           handleFinalize(app.id);
                         }}
+                        disabled={finalizeLoading}
                         className="px-3 py-1 bg-black hover:bg-gray-800 text-white text-xs rounded transition"
                       >
-                        Finalize
+                        {finalizeLoading ? "Finalizing...." : "Finalize"}
                       </button>
                     )}
                   </td>
@@ -312,8 +351,9 @@ export default function LoanApplications() {
               <button
                 onClick={handleReview}
                 className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition"
+                disabled={reviewLoading}
               >
-                Confirm
+                {reviewLoading ? "Reviewing..." : "Confirm"}
               </button>
             </div>
           </div>

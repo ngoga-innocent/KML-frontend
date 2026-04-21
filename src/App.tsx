@@ -13,67 +13,83 @@ import ProtectedRoute from "./app/Routes/ProtectedRoutes";
 import Loans from "./pages/Admin/Loans/Loan";
 import PaymentPage from "./pages/Clients/Payment";
 import ErrorBoundary from "./components/ErrorBoundary";
+import LoanApplicationPublic from "./pages/Clients/PublicApplication";
+import PublicApplicationsDashboard from "./pages/Admin/PublicApplications";
+import UsersPage from "./pages/Admin/Users/Users";
+import Thanking from "./pages/CommonPages/Thanking";
+import GlobalLoader from "./pages/CommonPages/Loader";
 function App() {
   return (
-    <BrowserRouter>
-      <ErrorBoundary>
-        <Routes>
-          {/* PUBLIC */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/login" element={<Login />} />
+    <>
+      {" "}
+      <GlobalLoader />
+      <BrowserRouter>
+        <ErrorBoundary>
+          <Routes>
+            {/* PUBLIC */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/thank-you" element={<Thanking />} />
+            <Route path="/application" element={<LoanApplicationPublic />} />
 
-          {/* PROTECTED */}
-          <Route
-            path="/change-password"
-            element={
-              <ProtectedRoute>
-                <ChangePassword />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* ADMIN LAYOUT */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
+            {/* PROTECTED */}
             <Route
-              index
-              element={
-                <ErrorBoundary>
-                  <Dashboard />
-                </ErrorBoundary>
-              }
-            />
-            <Route
-              path="apply-loan"
+              path="/change-password"
               element={
                 <ProtectedRoute>
-                  <ApplyLoan />
+                  <ChangePassword />
                 </ProtectedRoute>
               }
             />
+
+            {/* ADMIN LAYOUT */}
             <Route
-              path="loans"
+              path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <Loans />
+                  <AdminLayout />
                 </ProtectedRoute>
               }
-            />
-            <Route path="clients" element={<Clients />} />
-            <Route path="payments" element={<PaymentPage />} />
+            >
+              <Route
+                index
+                element={
+                  <ErrorBoundary>
+                    <Dashboard />
+                  </ErrorBoundary>
+                }
+              />
+              <Route
+                path="apply-loan"
+                element={
+                  <ProtectedRoute>
+                    <ApplyLoan />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="loans"
+                element={
+                  <ProtectedRoute>
+                    <Loans />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="clients" element={<Clients />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="payments" element={<PaymentPage />} />
 
-            <Route path="loan-types" element={<LoanTypeManagementPage />} />
-            <Route path="loan-applications" element={<LoanApplications />} />
-          </Route>
-        </Routes>
-      </ErrorBoundary>
-    </BrowserRouter>
+              <Route path="loan-types" element={<LoanTypeManagementPage />} />
+              <Route path="loan-applications" element={<LoanApplications />} />
+              <Route
+                path="public-applications"
+                element={<PublicApplicationsDashboard />}
+              />
+            </Route>
+          </Routes>
+        </ErrorBoundary>
+      </BrowserRouter>
+    </>
   );
 }
 
